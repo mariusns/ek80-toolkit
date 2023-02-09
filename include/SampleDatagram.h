@@ -1,11 +1,4 @@
 /*
-*
-* Distributed under the terms of the GNU General Public License v2
-* Copyright 2023 Marius Norvoll Sletten
-*
-*/
-
-/*
  * SampleDatagram.h
  *
  *      Author: mariuss
@@ -25,13 +18,14 @@
  *  Bit 8-10: Number of Complex per Samples
  */
 
-typedef enum class SampleDataType {
-	Power = 0x0,
+typedef enum{
+	Power = 0x1,
 	Angle = 0x2,
-	CFloat16 = 0x4,
-	CFloat32 = 0x8,
-	NumSamples = 0x7
-};
+	ComplexFloat16 = 0x4,
+	ComplexFloat32 = 0x8,
+	NumSamples = 0x700
+}SampleTypes_t;
+
 
 typedef struct
 {
@@ -64,9 +58,20 @@ typedef struct
 
 }sample5_t;
 
+
+
+typedef struct
+{
+	uint8_t Power;
+	uint8_t Angle;
+	uint8_t ComplexFloat16;
+	uint8_t ComplexFloat32;
+	uint8_t NumSamples;
+}DataType_t;
+
+
 typedef struct SampleDatagram
 {
-	//DatagramHeader DgHeader;
 	char ChannelID[128];
 	int16_t Datatype;
 	char Spare[2];
