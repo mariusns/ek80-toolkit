@@ -438,8 +438,6 @@ bool ek80process::getSamples(int num, int offset, DgVector<pSampleDatagram> *dat
 	}
 
 
-
-
 	return ret;
 
 }

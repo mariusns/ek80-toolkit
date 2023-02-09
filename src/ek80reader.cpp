@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -22,11 +21,11 @@ void print(SampleDatagram * data)
 
 	std::cout << "SampleDatagram: " << std::endl;
 	std::cout << "\t- " << "ChannelID: " << data->ChannelID << std::endl;
-	std::cout << "\t- " << "Datatype: "  << (short)data->Datatype << ", Power: " << (short) (data->Datatype & Power);
+	std::cout << "\t- " << "Datatype: "  << (short)data->Datatype << ", Power: " << (short) (data->Datatype & SampleTypes::Power);
 	std::cout << ", Angle: " << (short) ((data->Datatype & Angle) >> 1);
-	std::cout << ", CFloat16: " << (short)((data->Datatype & ComplexFloat16) >> 2);
-	std::cout << ", CFloat32: " << (short)((data->Datatype & ComplexFloat32) >> 3);
-	std::cout << ", NumSamples: " <<  (short)((data->Datatype & NumSamples) >> 8) << std::endl;
+	std::cout << ", CFloat16: " << (short)((data->Datatype & SampleTypes::ComplexFloat16) >> 2);
+	std::cout << ", CFloat32: " << (short)((data->Datatype & SampleTypes::ComplexFloat32) >> 3);
+	std::cout << ", NumSamples: " <<  (short)((data->Datatype & SampleTypes::NumSamples) >> 8) << std::endl;
 	std::cout << "\t- " << "Offset: " << data->Offset << std::endl;
 	std::cout << "\t- " << "Count: " << data->Count << std::endl;
 

@@ -155,6 +155,7 @@ private:
 	Dictionary<int, std::string> *channels = NULL;
 
 	Dictionary<int, std::string>  *channelFilter = NULL;
+	size_t idx = 0;
 	size_t bufferLength = 100;
 	size_t length = 0;
 	size_t pingInFile = 0;

@@ -21,7 +21,6 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <filesystem>
 
 template<typename Base, typename T>
 inline bool instanceof(const T*) {
@@ -30,7 +29,7 @@ inline bool instanceof(const T*) {
 
 class ek80file {
 private:
-	std::filesystem::path *filename;
+	std::string *filename;
 	std::ifstream *file = NULL;
 	xmlparser *parser;
 	struct nextDatagram{
@@ -57,10 +56,11 @@ public:
 	bool eof(void);
 	bool is_open(void);
 
-	/* Read next datagram and the size  */
-	DgTypes read(void);
 
-	/* Size of current datagram */
+
+	/* Read next datagram and the size  */
+	int read(void);
+
 	size_t size(void);
 
 	DgTypes getLastDatagramType(void);

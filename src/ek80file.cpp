@@ -4,18 +4,19 @@
  *      Author: mariuss
  */
 #include <iostream>
-#include <filesystem>
+#include <boost/filesystem.hpp>
 #include "Debug.hpp"
 #include "ek80file.hpp"
 #include "xmlparser.hpp"
 #include <cstdio>
 #include <map>
 
+using namespace boost::filesystem;
 
 
 ek80file::ek80file(std::string *fname)
 {
-	this->filename = new std::filesystem::path(*fname);
+	this->filename = new std::string(*fname);
 
 	next.DgHeader = NULL;
 	next.size = 0;
@@ -27,7 +28,7 @@ ek80file::ek80file(std::string *fname)
 
 ek80file::ek80file(std::string fname)
 {
-	this->filename = new std::filesystem::path(fname);
+	this->filename = new std::string(fname);
 
 	next.DgHeader = NULL;
 	next.size = 0;
@@ -63,11 +64,6 @@ bool ek80file::clearNext(void)
 }
 
 bool ek80file::getDatagram(nextDatagram *datagram)
-/*
- * Copy out from next struct
- *
- */
-
 {
 	bool ret = false;
 
@@ -76,33 +72,22 @@ bool ek80file::getDatagram(nextDatagram *datagram)
 
 
 		datagram->size = next.size;
-		if(datagram->DgHeader != NULL && sizeof(datagram->DgHeader) >= sizeof(DatagramHeader))
+		if(datagram->DgHeader != NULL)
 		{
 			memcpy(datagram->DgHeader, next.DgHeader, sizeof(DatagramHeader));
-
 		}
-
 
 		if(datagram->buffer == NULL && datagram->readbuffer != NULL)
 		{
 			datagram->readbuffer->clear();
 			datagram->readbuffer->resize(next.size);
 			std::copy(next.readbuffer->begin(), next.readbuffer->end(), datagram->readbuffer->data());
-			datagram->status= next.status;
-			ret = next.status;
-		}else if(datagram->buffer != NULL )
+		} else
 		{
-			try{
-				std::copy(next.readbuffer->begin(), next.readbuffer->end(), datagram->buffer);
-			} catch(std::exception &e)
-			{
-				std::cout << "std::copy failed: "<< e.what() << std::endl;
-			}
-
-			datagram->status= next.status;
-			ret = next.status;
+			std::copy(next.readbuffer->begin(), next.readbuffer->end(), datagram->buffer);
 		}
-
+		datagram->status= next.status;
+		ret = true;
 
 	}
 
@@ -136,7 +121,7 @@ bool ek80file::open(void)
 		return ret = true;
 	}
 
-	if(std::filesystem::exists(*filename)  )
+	if( exists(boost::filesystem::path(this->filename->c_str())) )
 	{
 		try{
 			file = new std::ifstream(filename->c_str(), std::fstream::binary);
@@ -212,7 +197,7 @@ bool ek80file::is_open(void)
 	return ret;
 }
 
-DgTypes ek80file::read(void)
+int ek80file::read(void)
 {
 	/*
 	 * long size
@@ -222,10 +207,11 @@ DgTypes ek80file::read(void)
 	 */
 
 
-	DgTypes type = noneDatagram;
+	int type = noneDatagram;
 	//DEBUG("0");
 	if(!file->is_open()) return type;
 
+	//auto print =[](char * a){std::cout << a << std::endl;};
 	if(!file->eof())
 	{
 
@@ -253,7 +239,7 @@ DgTypes ek80file::read(void)
 			close();
 			return type;
 		}
-
+		//std::cout << "Reading position:  " << file->tellg() << std::endl;
 		next.readbuffer->resize(next.size);
 
 		try{
@@ -273,9 +259,11 @@ DgTypes ek80file::read(void)
 			close();
 			return type;
 		}
+		//DEBUG("6");
 		next.status = (bool)(size == next.size);
 
-		type = (DgTypes) next.DgHeader->DatagramType;
+		type = next.DgHeader->DatagramType;
+		//std::cout << "Reading in file:  " << ", " << ((char*)&type)[0] <<((char*)&type)[1] << ((char*)&type)[2] << ((char*)&type)[3] << std::endl;
 	}
 	return type;
 }
@@ -303,79 +291,184 @@ DgTypes ek80file::getLastDatagramType(void)
 }
 
 bool ek80file::getDatagram(SampleDatagram *datagram, DatagramHeader *header)
-
-/* Set pointers */
 {
 	bool ret = false;
 	if(next.status && next.DgHeader->DatagramType == sampleDatagram && datagram != NULL)
 	{
 
-		nextDatagram dg = {0,header,NULL, (char *)datagram, 0};
+		nextDatagram *dg = new nextDatagram;
 
-		ret = getDatagram(&dg);
+		if(header != NULL)
+		{
+			dg->DgHeader = new DatagramHeader;
+		}
+		else
+		{
+			dg->DgHeader = NULL;
+		}
+		dg->readbuffer = new std::vector<char>(1);
+		dg->buffer = (char*) datagram;
 
+		ret = getDatagram(dg);
 
+		if(header != NULL)
+		{
+			memcpy(header, dg->DgHeader, sizeof(DatagramHeader));
+		}
+		//std::copy(dg->readbuffer->begin(), dg->readbuffer->end(), reinterpret_cast<char *>(datagram));
+
+		delete dg->DgHeader;
+		delete dg->readbuffer;
+		delete dg;
+		ret = true;
 	}
+
 	return ret;
 }
 
 bool ek80file::getDatagram(FilterDatagram *datagram, DatagramHeader *header)
-/* Set pointers */
 {
+
 	bool ret = false;
 	if(next.status && next.DgHeader->DatagramType == filterDatagram && datagram != NULL)
 	{
 
-		nextDatagram dg = {0,header,NULL, (char *)datagram, 0};
-		ret = getDatagram(&dg);
+		nextDatagram *dg = new nextDatagram;
 
+		if(header != NULL)
+		{
+			dg->DgHeader = header;
+			//dg->DgHeader = new DatagramHeader;
+		}
+		else
+		{
+			dg->DgHeader = NULL;
+		}
+
+		dg->readbuffer = new std::vector<char>(1);
+		dg->buffer = (char*)datagram;
+
+		ret = getDatagram(dg);
+
+		if(header != NULL)
+		{
+			//memcpy(header, dg->DgHeader, sizeof(DatagramHeader));
+		}
+
+
+		//delete dg->DgHeader;
+		delete dg->readbuffer;
+		delete dg;
+		ret = true;
 	}
 
 	return ret;
 }
 
 bool ek80file::getDatagram(DepthDatagram * datagram, DatagramHeader *header)
-/* Set pointers */
 {
 	bool ret = false;
-	if(next.status && next.DgHeader->DatagramType == noneDatagram && datagram != NULL)
+	if(next.status && next.DgHeader->DatagramType == mru0Datagram && datagram != NULL)
 	{
 
-		nextDatagram dg = {0,header,NULL, (char *)datagram, 0};
+		nextDatagram *dg = new nextDatagram;
 
-		ret = getDatagram(&dg);
+		if(header != NULL)
+		{
+			dg->DgHeader = new DatagramHeader;
+		}
+		else
+		{
+			dg->DgHeader = NULL;
+		}
+		dg->readbuffer = new std::vector<char>(1);
+		dg->buffer = (char *) datagram;
 
+		ret = getDatagram(dg);
 
+		if(header != NULL)
+		{
+			memcpy(header, dg->DgHeader, sizeof(DatagramHeader));
+		}
+		//std::copy(dg->readbuffer->begin(), dg->readbuffer->end(), reinterpret_cast<char *>(datagram));
+
+		delete dg->DgHeader;
+		delete dg->readbuffer;
+		delete dg;
+		ret = true;
 	}
+
 
 	return ret;
 }
 
 bool ek80file::getDatagram(MRUDatagram *datagram, DatagramHeader *header)
-/* Set pointers */
 {
 	bool ret = false;
 	if(next.status && (next.DgHeader->DatagramType == mru0Datagram || next.DgHeader->DatagramType == mru1Datagram) && datagram != NULL)
 	{
 
-		nextDatagram dg = {0,header,NULL, (char *)datagram, 0};
+		nextDatagram *dg = new nextDatagram;
 
-		ret = getDatagram(&dg);
+		if(header != NULL)
+		{
+			dg->DgHeader = new DatagramHeader;
+		}
+		else
+		{
+			dg->DgHeader = NULL;
+		}
 
+		dg->readbuffer = NULL;
+		dg->buffer = (char *) datagram;
 
+		ret = getDatagram(dg);
+
+		if(header != NULL)
+		{
+			memcpy(header, dg->DgHeader, sizeof(DatagramHeader));
+		}
+
+		delete dg->DgHeader;
+		delete dg->readbuffer;
+		delete dg;
+		ret = true;
 	}
 
 	return ret;
 }
 
 bool ek80file::getDatagram(TextDatagram *datagram, DatagramHeader *header)
-/* Set pointers */
 {
 	bool ret = false;
-	if(next.status && next.DgHeader->DatagramType == textDatagram && datagram != NULL)
+	if(next.status && next.DgHeader->DatagramType == nmeaDatagram  && datagram != NULL)
 	{
-		nextDatagram dg = {0,header,NULL, (char *)datagram, 0};
-		ret = getDatagram(&dg);
+
+		nextDatagram *dg = new nextDatagram;
+
+		if(header != NULL)
+		{
+			dg->DgHeader = new DatagramHeader;
+		}
+		else
+		{
+			dg->DgHeader = NULL;
+		}
+
+		dg->readbuffer = new std::vector<char>(1);
+		dg->buffer = (char *) datagram;
+
+		ret = getDatagram(dg);
+
+		if(header != NULL)
+		{
+			memcpy(header, dg->DgHeader, sizeof(DatagramHeader));
+		}
+
+		delete dg->DgHeader;
+		delete dg->readbuffer;
+		delete dg;
+		ret = true;
 	}
 
 	return ret;
@@ -383,21 +476,34 @@ bool ek80file::getDatagram(TextDatagram *datagram, DatagramHeader *header)
 
 
 bool ek80file::getDatagram(XmlDatagram *datagram, DatagramHeader *header)
-/* Set pointers */
 {
-
 	bool ret = false;
-	if(next.status && next.DgHeader->DatagramType == xmlDatagram && datagram != NULL)
+
+
+	if(next.DgHeader->DatagramType == xmlDatagram)
 	{
-		nextDatagram dg = {0,header,new std::vector<char>(1),NULL,0};
-		ret = getDatagram(&dg);
+
+		nextDatagram *dg = new nextDatagram;
+
+		if(header != NULL)
+		{
+			dg->DgHeader = header;
+		}
+		else
+		{
+			dg->DgHeader = NULL;
+		}
+		dg->readbuffer = new std::vector<char>(1);
+		ret = getDatagram(dg);
 		if(ret)
 		{
-			this->parser->parser(dg.readbuffer, datagram);
+
+			parser->parser(dg->readbuffer, datagram);
 		}
-
+		//delete dg->DgHeader;
+		delete dg->readbuffer;
+		delete dg;
 	}
-
 	return ret;
 }
 

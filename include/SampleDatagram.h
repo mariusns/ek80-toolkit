@@ -18,14 +18,14 @@
  *  Bit 8-10: Number of Complex per Samples
  */
 
+
 typedef enum{
 	Power = 0x1,
 	Angle = 0x2,
 	ComplexFloat16 = 0x4,
 	ComplexFloat32 = 0x8,
 	NumSamples = 0x700
-}SampleTypes_t;
-
+}SampleTypes;
 
 typedef struct
 {
@@ -58,20 +58,9 @@ typedef struct
 
 }sample5_t;
 
-
-
-typedef struct
-{
-	uint8_t Power;
-	uint8_t Angle;
-	uint8_t ComplexFloat16;
-	uint8_t ComplexFloat32;
-	uint8_t NumSamples;
-}DataType_t;
-
-
 typedef struct SampleDatagram
 {
+	//DatagramHeader DgHeader;
 	char ChannelID[128];
 	int16_t Datatype;
 	char Spare[2];
