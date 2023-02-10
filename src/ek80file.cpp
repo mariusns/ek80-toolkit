@@ -4,7 +4,7 @@
  *      Author: mariuss
  */
 #include <iostream>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include "Debug.hpp"
 #include "ek80file.hpp"
 #include "xmlparser.hpp"
@@ -86,7 +86,7 @@ bool ek80file::getDatagram(nextDatagram *datagram)
 		{
 			std::copy(next.readbuffer->begin(), next.readbuffer->end(), datagram->buffer);
 		}
-		datagram->status= next.status;
+		datagram->status = next.status;
 		ret = true;
 
 	}
@@ -112,6 +112,28 @@ bool ek80file::clean(void)
 
 /* Public methods */
 
+bool ek80file::is_valid(void)
+{
+	bool ret = false;
+	ret = open();
+	if(ret)
+	{
+		/*Check bytes*/
+		uint32_t bytes;
+
+		file->read((char *)&bytes, sizeof(bytes));
+		if(bytes== 3876);
+			ret = true;
+		std::cout << "File identifier: " << bytes << std::endl;
+	}
+	close();
+
+	return ret;
+
+}
+
+
+
 bool ek80file::open(void)
 {
 
@@ -121,7 +143,7 @@ bool ek80file::open(void)
 		return ret = true;
 	}
 
-	if( exists(boost::filesystem::path(this->filename->c_str())) )
+	if( std::filesystem::exists(std::filesystem::path(this->filename->c_str())) )
 	{
 		try{
 			file = new std::ifstream(filename->c_str(), std::fstream::binary);
@@ -290,10 +312,13 @@ DgTypes ek80file::getLastDatagramType(void)
 	return type;
 }
 
-bool ek80file::getDatagram(SampleDatagram *datagram, DatagramHeader *header)
+template<typename T> bool ek80file::getDatagram(T * datagram, DatagramHeader *header)
 {
 	bool ret = false;
-	if(next.status && next.DgHeader->DatagramType == sampleDatagram && datagram != NULL)
+	if(next.DgHeader->DatagramType == xmlDatagram || next.DgHeader->DatagramType == noneDatagram)
+		return ret;
+
+	if(next.status && datagram != NULL)
 	{
 
 		nextDatagram *dg = new nextDatagram;
@@ -306,7 +331,7 @@ bool ek80file::getDatagram(SampleDatagram *datagram, DatagramHeader *header)
 		{
 			dg->DgHeader = NULL;
 		}
-		dg->readbuffer = new std::vector<char>(1);
+		dg->readbuffer = NULL;
 		dg->buffer = (char*) datagram;
 
 		ret = getDatagram(dg);
@@ -315,7 +340,6 @@ bool ek80file::getDatagram(SampleDatagram *datagram, DatagramHeader *header)
 		{
 			memcpy(header, dg->DgHeader, sizeof(DatagramHeader));
 		}
-		//std::copy(dg->readbuffer->begin(), dg->readbuffer->end(), reinterpret_cast<char *>(datagram));
 
 		delete dg->DgHeader;
 		delete dg->readbuffer;
@@ -326,159 +350,9 @@ bool ek80file::getDatagram(SampleDatagram *datagram, DatagramHeader *header)
 	return ret;
 }
 
-bool ek80file::getDatagram(FilterDatagram *datagram, DatagramHeader *header)
-{
-
-	bool ret = false;
-	if(next.status && next.DgHeader->DatagramType == filterDatagram && datagram != NULL)
-	{
-
-		nextDatagram *dg = new nextDatagram;
-
-		if(header != NULL)
-		{
-			dg->DgHeader = header;
-			//dg->DgHeader = new DatagramHeader;
-		}
-		else
-		{
-			dg->DgHeader = NULL;
-		}
-
-		dg->readbuffer = new std::vector<char>(1);
-		dg->buffer = (char*)datagram;
-
-		ret = getDatagram(dg);
-
-		if(header != NULL)
-		{
-			//memcpy(header, dg->DgHeader, sizeof(DatagramHeader));
-		}
-
-
-		//delete dg->DgHeader;
-		delete dg->readbuffer;
-		delete dg;
-		ret = true;
-	}
-
-	return ret;
-}
-
-bool ek80file::getDatagram(DepthDatagram * datagram, DatagramHeader *header)
+template<typename T = XmlDatagram >bool ek80file::getDatagram(T *datagram, DatagramHeader *header)
 {
 	bool ret = false;
-	if(next.status && next.DgHeader->DatagramType == mru0Datagram && datagram != NULL)
-	{
-
-		nextDatagram *dg = new nextDatagram;
-
-		if(header != NULL)
-		{
-			dg->DgHeader = new DatagramHeader;
-		}
-		else
-		{
-			dg->DgHeader = NULL;
-		}
-		dg->readbuffer = new std::vector<char>(1);
-		dg->buffer = (char *) datagram;
-
-		ret = getDatagram(dg);
-
-		if(header != NULL)
-		{
-			memcpy(header, dg->DgHeader, sizeof(DatagramHeader));
-		}
-		//std::copy(dg->readbuffer->begin(), dg->readbuffer->end(), reinterpret_cast<char *>(datagram));
-
-		delete dg->DgHeader;
-		delete dg->readbuffer;
-		delete dg;
-		ret = true;
-	}
-
-
-	return ret;
-}
-
-bool ek80file::getDatagram(MRUDatagram *datagram, DatagramHeader *header)
-{
-	bool ret = false;
-	if(next.status && (next.DgHeader->DatagramType == mru0Datagram || next.DgHeader->DatagramType == mru1Datagram) && datagram != NULL)
-	{
-
-		nextDatagram *dg = new nextDatagram;
-
-		if(header != NULL)
-		{
-			dg->DgHeader = new DatagramHeader;
-		}
-		else
-		{
-			dg->DgHeader = NULL;
-		}
-
-		dg->readbuffer = NULL;
-		dg->buffer = (char *) datagram;
-
-		ret = getDatagram(dg);
-
-		if(header != NULL)
-		{
-			memcpy(header, dg->DgHeader, sizeof(DatagramHeader));
-		}
-
-		delete dg->DgHeader;
-		delete dg->readbuffer;
-		delete dg;
-		ret = true;
-	}
-
-	return ret;
-}
-
-bool ek80file::getDatagram(TextDatagram *datagram, DatagramHeader *header)
-{
-	bool ret = false;
-	if(next.status && next.DgHeader->DatagramType == nmeaDatagram  && datagram != NULL)
-	{
-
-		nextDatagram *dg = new nextDatagram;
-
-		if(header != NULL)
-		{
-			dg->DgHeader = new DatagramHeader;
-		}
-		else
-		{
-			dg->DgHeader = NULL;
-		}
-
-		dg->readbuffer = new std::vector<char>(1);
-		dg->buffer = (char *) datagram;
-
-		ret = getDatagram(dg);
-
-		if(header != NULL)
-		{
-			memcpy(header, dg->DgHeader, sizeof(DatagramHeader));
-		}
-
-		delete dg->DgHeader;
-		delete dg->readbuffer;
-		delete dg;
-		ret = true;
-	}
-
-	return ret;
-}
-
-
-bool ek80file::getDatagram(XmlDatagram *datagram, DatagramHeader *header)
-{
-	bool ret = false;
-
 
 	if(next.DgHeader->DatagramType == xmlDatagram)
 	{
@@ -493,6 +367,7 @@ bool ek80file::getDatagram(XmlDatagram *datagram, DatagramHeader *header)
 		{
 			dg->DgHeader = NULL;
 		}
+
 		dg->readbuffer = new std::vector<char>(1);
 		ret = getDatagram(dg);
 		if(ret)
@@ -500,7 +375,6 @@ bool ek80file::getDatagram(XmlDatagram *datagram, DatagramHeader *header)
 
 			parser->parser(dg->readbuffer, datagram);
 		}
-		//delete dg->DgHeader;
 		delete dg->readbuffer;
 		delete dg;
 	}

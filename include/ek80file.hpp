@@ -49,7 +49,7 @@ public:
 	/* Open and close file */
 	ek80file(std::string fname);
 	ek80file(std::string *fname);
-
+	bool is_valid(void);
 	bool open(void);
 	bool close(void);
 	bool reset(void);
@@ -65,12 +65,7 @@ public:
 
 	DgTypes getLastDatagramType(void);
 
-	bool getDatagram(SampleDatagram *datagram, DatagramHeader *header=NULL);
-	bool getDatagram(FilterDatagram *datagram, DatagramHeader *header=NULL);
-	bool getDatagram(DepthDatagram * datagram, DatagramHeader *header=NULL);
-	bool getDatagram(MRUDatagram *datagram, DatagramHeader *header=NULL);
-	bool getDatagram(TextDatagram *datagram, DatagramHeader *header=NULL);
-	bool getDatagram(XmlDatagram *datagram, DatagramHeader *header=NULL);
+	template<typename T> bool getDatagram(T *datagram, DatagramHeader *header=NULL);
 
 };
 
